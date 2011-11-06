@@ -1,4 +1,3 @@
-
 local punycode = require'punycode'
 
 local prepare = function(str)
@@ -83,7 +82,7 @@ context("RFC 3492 - Sample Strings", function()
 			u+043D u+0438 u+043D u+0435 u+0433 u+043E u+0432 u+043E u+0440
 			u+044F u+0442 u+043F u+043E u+0440 u+0443 u+0441 u+0441 u+043A
 			u+0438
-			]]), 'b1abfaaepdrnnbgefbaDotcwatmq2g4l')
+			]]), 'b1abfaaepdrnnbgefbadotcwatmq2g4l')
 		end)
 
 		test("Spanish", function()
