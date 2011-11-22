@@ -28,7 +28,7 @@ local adapt = function(delta, numpoints, firsttime)
 	return math.floor(k + (base - tmin + 1) * delta / (delta + skew))
 end
 
-local encode
+local punycode_encode
 do
 	-- tests whether cp is a basic code point:
 	local basic = function(cp)
@@ -64,7 +64,7 @@ do
 		return out
 	end
 
-	function encode(input)
+	function punycode_encode(input)
 		if(type(input) == 'string') then
 			input = toUCS4(input)
 		end
@@ -155,6 +155,6 @@ end
 
 return {
 	punycode = {
-		encode = encode,
+		encode = punycode_encode,
 	},
 }
