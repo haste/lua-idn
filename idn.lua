@@ -153,7 +153,33 @@ do
 	end
 end
 
+local idn_encode
+do
+	function idn_encode(domain)
+		local labels = {}
+		for label in domain:gmatch('([^.]+)%.?') do
+			-- Domain names can only consist of a-z, A-Z, 0-9, - and aren't allowed
+			-- to start or end with a hyphen
+			local first, last = label:sub(1, 1), label:sub(2, 2)
+			if(first == '-' or last == '-') then
+				return nil, 'Invalid DNS label'
+			end
+
+			if(label:match('^[a-zA-Z0-9-]+$')) then
+				table.insert(labels, label)
+			elseif(label:sub(1,1) ~= '-' and label:sub(2,2) ~= '-') then
+				local plabel = punycode_encode(label)
+				table.insert(labels, string.format('xn--%s', plabel))
+			end
+		end
+
+		return table.concat(labels, '.')
+	end
+end
+
 return {
+	encode = idn_encode,
+
 	punycode = {
 		encode = punycode_encode,
 	},
