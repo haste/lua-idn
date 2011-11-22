@@ -154,5 +154,7 @@ do
 end
 
 return {
-	encode = encode,
+	punycode = {
+		encode = encode,
+	},
 }

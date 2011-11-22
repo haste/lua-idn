@@ -1,4 +1,4 @@
-local punycode = require'punycode'
+local idn = require'idn'
 
 local prepare = function(str)
 	return str:gsub('[\n%s]+', ''):gsub('[uU]%+([A-F0-9]+)%s?', function(n)
@@ -13,7 +13,7 @@ local prepare = function(str)
 	end)
 end
 
-local pe = punycode.encode
+local pe = idn.punycode.encode
 
 context("RFC 3492 - Sample Strings", function()
 	context("Encoding", function()
