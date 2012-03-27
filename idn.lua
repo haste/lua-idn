@@ -160,7 +160,7 @@ do
 		for label in domain:gmatch('([^.]+)%.?') do
 			-- Domain names can only consist of a-z, A-Z, 0-9, - and aren't allowed
 			-- to start or end with a hyphen
-			local first, last = label:sub(1, 1), label:sub(2, 2)
+			local first, last = label:sub(1, 1), label:sub(-1)
 			if(first == '-' or last == '-') then
 				return nil, 'Invalid DNS label'
 			end

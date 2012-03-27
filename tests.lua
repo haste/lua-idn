@@ -14,6 +14,7 @@ local prepare = function(str)
 end
 
 local pe = idn.punycode.encode
+local ie = idn.encode
 
 context("RFC 3492 - Sample Strings", function()
 	context("Encoding", function()
@@ -156,6 +157,40 @@ context("RFC 3492 - Sample Strings", function()
 			u+002D u+003E u+0020 u+0024 u+0031 u+002E u+0030 u+0030 u+0020
 			u+003C u+002D
 			]]), '-> $1.00 <--')
+		end)
+	end)
+
+	context("Hyphens", function()
+		test("first letter first label", function()
+			assert_nil(ie'-example')
+		end)
+
+		test("first letter second label", function()
+			assert_nil(ie'www.-example')
+		end)
+
+		test("last letter first label", function()
+			assert_nil(ie'example-')
+		end)
+
+		test("last letter second label", function()
+			assert_nil(ie'www.example-')
+		end)
+
+		test("second letter first label", function()
+			assert_equal(ie'e-xample', 'e-xample')
+		end)
+
+		test("second letter second label", function()
+			assert_equal(ie'www.e-xample', 'www.e-xample')
+		end)
+
+		test("second last letter first label", function()
+			assert_equal(ie'exampl-e', 'exampl-e')
+		end)
+
+		test("second last letter second label", function()
+			assert_equal(ie'www.exampl-e', 'www.exampl-e')
 		end)
 	end)
 end)
