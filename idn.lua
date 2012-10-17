@@ -281,8 +281,25 @@ do
 	end
 end
 
+local idn_decode
+do
+	function idn_decode(domain)
+		local labels = {}
+		for label in domain:gmatch('([^.]+)%.?') do
+			if(label:sub(1, 4) == 'xn--') then
+				table.insert(labels, punycode_decode(label:sub(5)))
+			elseif(label:match('^[a-zA-Z0-9-]+$')) then
+				table.insert(labels, label)
+			end
+		end
+
+		return table.concat(labels, '.')
+	end
+end
+
 return {
 	encode = idn_encode,
+	decode = idn_decode,
 
 	punycode = {
 		encode = punycode_encode,
