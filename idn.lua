@@ -9,7 +9,7 @@ local initial_bias = 72
 local initial_n = 0x80
 local delimiter = 0x2D
 
- -- Bias adaptation function
+-- Bias adaptation function
 local adapt = function(delta, numpoints, firsttime)
 	if(firsttime) then
 		delta = math.floor(delta / damp)
@@ -28,13 +28,43 @@ local adapt = function(delta, numpoints, firsttime)
 	return math.floor(k + (base - tmin + 1) * delta / (delta + skew))
 end
 
-local punycode_encode
-do
-	-- tests whether cp is a basic code point:
-	local basic = function(cp)
-		return cp < 0x80
+-- tests whether cp is a basic code point:
+local basic = function(cp)
+	return cp < 0x80
+end
+
+local offset = {0, 0x3000, 0xE0000, 0x3C00000}
+local utf8code = function(U, ...)
+	local numBytes = select('#', ...)
+	for i=1, numBytes do
+		local b = select(i, ...)
+		U = bit.lshift(U, 6) + bit.band(b, 63)
 	end
 
+	return U - offset[numBytes + 1]
+end
+
+local toUCS4 = function(str)
+	local out = {}
+	for c in str:gmatch'([%z\1-\127\194-\244][\128-\191]*)' do
+		table.insert(out, utf8code(string.byte(c, 1, -1)))
+	end
+
+	return out
+end
+
+local toUnicode = function(n)
+	if(n < 128) then
+		return string.char(n)
+	elseif(n < 2048) then
+		return string.char(192 + ((n - (n % 64)) / 64), 128 + (n % 64))
+	else
+		return string.char(224 + ((n - (n % 4096)) / 4096), 128 + (((n % 4096) - (n % 64)) / 64), 128 + (n % 64))
+	end
+end
+
+local punycode_encode
+do
 	-- returns the basic code point whose value
 	-- (when used for representing integers) is d, which needs to be in
 	-- the range 0 to base-1.
@@ -42,26 +72,6 @@ do
 		return d + 22 + 75 * (d < 26 and 1 or 0)
 		--  0..25 map to ASCII a..z
 		-- 26..35 map to ASCII 0..9
-	end
-
-	local offset = {0, 0x3000, 0xE0000, 0x3C00000}
-	local utf8code = function(U, ...)
-		local numBytes = select('#', ...)
-		for i=1, numBytes do
-			local b = select(i, ...)
-			U = bit.lshift(U, 6) + bit.band(b, 63)
-		end
-
-		return U - offset[numBytes + 1]
-	end
-
-	local toUCS4 = function(str)
-		local out = {}
-		for c in str:gmatch'([%z\1-\127\194-\244][\128-\191]*)' do
-			table.insert(out, utf8code(string.byte(c, 1, -1)))
-		end
-
-		return out
 	end
 
 	function punycode_encode(input)
@@ -153,6 +163,100 @@ do
 	end
 end
 
+local punycode_decode
+do
+	local decode_digit = function(d)
+		if(d - 48 < 10) then
+			return d - 22
+		elseif(d - 65 < 26) then
+			return d - 65
+		elseif(d - 97 < 26) then
+			return d - 97
+		else
+			return base
+		end
+	end
+
+	function punycode_decode(input)
+		if(type(input) == 'string') then
+			input = toUCS4(input)
+		end
+
+		local output = {}
+
+		-- Initialize the state
+		local n = initial_n
+		local i = 0
+		local out = 1
+		local bias = initial_bias
+
+		local b = 1
+		for j = 1, #input do
+			if(input[j] == delimiter) then
+				b = j
+			end
+		end
+
+		for j = 1, #input do
+			local c = input[j]
+			if(not basic(c)) then return nil, 'Invalid input' end
+		end
+
+		for j = 1, b - 1 do
+			local c = input[j]
+			output[out] = toUnicode(c)
+			out = out + 1
+		end
+
+		local index = 1
+		if(b > 1) then
+			index = b + 1
+		end
+
+		local inputLength = #input
+		while(index <= inputLength) do
+			local oldi = i
+			local w = 1
+			local k = base
+
+			while(true) do
+				if(index > inputLength) then return nil, 'Bad input' end
+				local digit = decode_digit(input[index])
+				if(digit >= base) then return nil, 'Bad input' end
+				index = index + 1
+				i = i + (digit * w)
+
+				local t
+				if(k <= bias) then
+					t = tmin
+				elseif(k >= bias + tmax) then
+					t = tmax
+				else
+					t = k - bias
+				end
+
+				if(digit < t) then
+					break
+				end
+
+				w = w * (base - t)
+
+				k = k + base
+			end
+
+			bias = adapt(i - oldi, out, oldi == 0)
+
+			n = n + math.floor(i / (out))
+			i = (i % out) + 1
+
+			table.insert(output, i, toUnicode(n))
+			out = out + 1
+		end
+
+		return table.concat(output)
+	end
+end
+
 local idn_encode
 do
 	function idn_encode(domain)
@@ -182,5 +286,6 @@ return {
 
 	punycode = {
 		encode = punycode_encode,
+		decode = punycode_decode,
 	},
 }
